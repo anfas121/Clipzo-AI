@@ -12,11 +12,11 @@ jobs:
         with:
           python-version: '3.11'
       - name: Check Python syntax
-        run: python -m py_compile backend/main.py
+        run: python -m py_compile backend/main.py backend/highlights.py backend/captions.py
       - name: Install backend dependencies
         run: pip install -r backend/requirements.txt
       - name: Run highlight tests
-        run: cd backend && python -m unittest test_highlights.py
+        run: cd backend && python -m unittest test_highlights.py test_captions.py
       - name: Import API
         run: cd backend && python -c "from main import app; print(app.title)"
   mobile:
