@@ -40,7 +40,7 @@ def srt_for_clip(segments, start, end):
         b = min(end, segment["end"])
         if a >= b:
             continue
-        text = re.sub(r"[\\r\\n]+", " ", segment["text"]).strip()
+        text = " ".join(segment["text"].split())
         if text:
             lines.extend([str(len(lines) // 4 + 1), f"{timestamp(a-start)} --> {timestamp(b-start)}", text, ""])
     return "\\n".join(lines).replace("\\n", "\n")
