@@ -39,7 +39,7 @@ export default function App() {
     if (!videoId) return Alert.alert('Process a video first');
     setBusy(true);
     try {
-      const base = server.trim().replace(/\\/$/, '');
+      const base = server.trim().replace(/\/$/, '');
       const result = await fetch(base + '/videos/' + videoId + '/transcribe', { method: 'POST' });
       if (!result.ok) throw new Error(await result.text());
       const response = await fetch(base + '/videos/' + videoId + '/suggestions?clip_seconds=30');
@@ -51,7 +51,7 @@ export default function App() {
     finally { setBusy(false); }
   }
   function clipUrl(clip, captions = false) {
-    return server.trim().replace(/\\/$/, '') + '/videos/' + clip.videoId +
+    return server.trim().replace(/\/$/, '') + '/videos/' + clip.videoId +
       '/export?start=' + clip.start + '&end=' + clip.end + (captions ? '&burn_captions=true' : '');
   }
   return (
@@ -81,7 +81,7 @@ export default function App() {
               <Text style={styles.buttonText}>Export with burned subtitles</Text>
             </TouchableOpacity>}
             {transcribed && <TouchableOpacity style={styles.button} onPress={() => Linking.openURL(
-              server.trim().replace(/\\/$/, '') + '/videos/' + clip.videoId + '/captions?start=' + clip.start + '&end=' + clip.end
+              server.trim().replace(/\/$/, '') + '/videos/' + clip.videoId + '/captions?start=' + clip.start + '&end=' + clip.end
             )}><Text style={styles.buttonText}>Open SRT captions</Text></TouchableOpacity>}
           </View>
         ))}
