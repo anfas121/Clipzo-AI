@@ -1,0 +1,33 @@
+name: Validate Clipzo AI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check Python syntax
+        run: python -m py_compile backend/main.py
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Import API
+        run: cd backend && python -c "from main import app; print(app.title)"
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install mobile dependencies
+        run: npm install
+      - name: Verify Expo configuration
+        run: npx expo config --type public
