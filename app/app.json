@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Clipzo AI",
+    "slug": "clipzo-ai",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.clipzo.ai"
+    },
+    "plugins": [
+      "expo-document-picker"
+    ]
+  }
+}
