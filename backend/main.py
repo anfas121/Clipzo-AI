@@ -9,11 +9,13 @@ import subprocess
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from highlights import rank_windows, audio_activity
+from captions import transcribe, srt_for_clip, score_speech
 
 app = FastAPI(title="Clipzo AI MVP")
 MEDIA = Path(__file__).resolve().parent / "media"
 MEDIA.mkdir(exist_ok=True)
 MAX_BYTES = 250 * 1024 * 1024
+TRANSCRIPTS = {}
 
 def run(*args):
     try:
@@ -61,26 +63,63 @@ async def upload(file: UploadFile = File(...)):
     finally:
         await file.close()
 
+@app.post("/videos/{video_id}/transcribe")
+def transcript(video_id: str):
+    source = video_path(video_id)
+    try:
+        result = transcribe(source)
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc)) from exc
+    TRANSCRIPTS[video_id] = result
+    return result
+
+@app.get("/videos/{video_id}/transcript")
+def get_transcript(video_id: str):
+    video_path(video_id)
+    if video_id not in TRANSCRIPTS:
+        raise HTTPException(404, "Transcribe this video first")
+    return TRANSCRIPTS[video_id]
+
+@app.get("/videos/{video_id}/captions")
+def captions(video_id: str, start: float = 0, end: float = 30):
+    video_path(video_id)
+    if video_id not in TRANSCRIPTS:
+        raise HTTPException(404, "Transcribe this video first")
+    from fastapi.responses import PlainTextResponse
+    return PlainTextResponse(srt_for_clip(TRANSCRIPTS[video_id]["segments"], start, end),
+                             media_type="application/x-subrip")
+
 @app.get("/videos/{video_id}/suggestions")
 def suggestions(video_id: str, clip_seconds: int = 30):
     path = video_path(video_id)
     length = duration(path)
     clip_seconds = max(5, min(60, clip_seconds))
     clips = rank_windows(length, clip_seconds, lambda start, span: audio_activity(path, start, span))
-    return {"method": "audio_activity_heuristic", "ai_ranked": False,
+    if video_id in TRANSCRIPTS:
+        segments = TRANSCRIPTS[video_id]["segments"]
+        clips.sort(key=lambda c: (-score_speech(c["start"], c["end"], segments), -c["score"]))
+    return {"method": "speech_density_and_audio" if video_id in TRANSCRIPTS else "audio_activity_heuristic", "ai_ranked": False,
             "note": "Louder sections are prioritized; this is not semantic AI highlight detection.",
             "clips": clips}
 
 @app.get("/videos/{video_id}/export")
-def export(video_id: str, start: float = 0, end: float = 30):
+def export(video_id: str, start: float = 0, end: float = 30, burn_captions: bool = False):
     source = video_path(video_id)
     length = duration(source)
     if not (0 <= start < end <= length + 0.01) or end - start > 60:
         raise HTTPException(400, "Choose a clip between 0 and 60 seconds")
-    output = MEDIA / f"{video_id}_{int(start * 100)}_{int(end * 100)}.mp4"
+    if burn_captions and video_id not in TRANSCRIPTS:
+        raise HTTPException(409, "Transcribe before burning captions")
+    suffix = "_captioned" if burn_captions else ""
+    output = MEDIA / f"{video_id}_{int(start * 100)}_{int(end * 100)}{suffix}.mp4"
     if not output.exists():
-        run("ffmpeg", "-y", "-ss", str(start), "-i", str(source), "-t", str(end - start),
-            "-vf", "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280",
+        vf = "scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280"
+        if burn_captions:
+            caption_file = MEDIA / f"{video_id}_{int(start * 100)}_{int(end * 100)}.srt"
+            caption_file.write_text(srt_for_clip(TRANSCRIPTS[video_id]["segments"], start, end), encoding="utf-8")
+            vf += f",subtitles={caption_file.as_posix()}"
+        run("ffmpeg", "-nostdin", "-y", "-ss", str(start), "-i", str(source), "-t", str(end - start),
+            "-vf", vf,
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "25", "-c:a", "aac",
             "-movflags", "+faststart", str(output))
     return FileResponse(output, media_type="video/mp4", filename="clipzo-short.mp4")
