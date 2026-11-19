@@ -1,0 +1,24 @@
+name: Build Android APK
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm install
+      - name: Install EAS CLI
+        run: npm install --global eas-cli
+      - name: Trigger EAS Android preview APK build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          test -n "$EXPO_TOKEN" || { echo "Set EXPO_TOKEN repository secret first"; exit 1; }
+          eas build --platform android --profile preview --non-interactive --no-wait
