@@ -6,7 +6,8 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.clipzo.ai"
     },
     "android": {
       "package": "com.clipzo.ai"
