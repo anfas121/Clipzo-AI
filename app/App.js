@@ -7,11 +7,13 @@ export default function App() {
   const [server, setServer] = useState('http://192.168.1.10:8000');
   const [video, setVideo] = useState(null);
   const [clips, setClips] = useState([]);
+  const [videoId, setVideoId] = useState(null);
+  const [transcribed, setTranscribed] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function pick() {
     const result = await DocumentPicker.getDocumentAsync({ type: 'video/*', copyToCacheDirectory: true });
-    if (!result.canceled) { setVideo(result.assets[0]); setClips([]); }
+    if (!result.canceled) { setVideo(result.assets[0]); setClips([]); setVideoId(null); setTranscribed(false); }
   }
   async function process() {
     if (!video) return Alert.alert('Choose a video first');
@@ -26,10 +28,31 @@ export default function App() {
       const response = await fetch(base + '/videos/' + info.id + '/suggestions?clip_seconds=30');
       if (!response.ok) throw new Error(await response.text());
       const data = await response.json();
+      setVideoId(info.id);
+      setTranscribed(false);
       setClips(data.clips.map(clip => ({ ...clip, videoId: info.id })));
     } catch (error) {
       Alert.alert('Processing failed', String(error.message || error));
     } finally { setBusy(false); }
+  }
+  async function transcribeVideo() {
+    if (!videoId) return Alert.alert('Process a video first');
+    setBusy(true);
+    try {
+      const base = server.trim().replace(/\\/$/, '');
+      const result = await fetch(base + '/videos/' + videoId + '/transcribe', { method: 'POST' });
+      if (!result.ok) throw new Error(await result.text());
+      const response = await fetch(base + '/videos/' + videoId + '/suggestions?clip_seconds=30');
+      if (!response.ok) throw new Error(await response.text());
+      const data = await response.json();
+      setClips(data.clips.map(clip => ({ ...clip, videoId })));
+      setTranscribed(true);
+    } catch (error) { Alert.alert('Transcription unavailable', String(error.message || error)); }
+    finally { setBusy(false); }
+  }
+  function clipUrl(clip, captions = false) {
+    return server.trim().replace(/\\/$/, '') + '/videos/' + clip.videoId +
+      '/export?start=' + clip.start + '&end=' + clip.end + (captions ? '&burn_captions=true' : '');
   }
   return (
     <SafeAreaView style={styles.screen}>
@@ -44,16 +67,25 @@ export default function App() {
         <TouchableOpacity style={styles.button} onPress={process} disabled={busy}>
           <Text style={styles.buttonText}>{busy ? 'Processing…' : 'Find clip suggestions'}</Text>
         </TouchableOpacity>
+        {videoId && <TouchableOpacity style={styles.button} onPress={transcribeVideo} disabled={busy}>
+          <Text style={styles.buttonText}>Transcribe & improve suggestions (optional)</Text>
+        </TouchableOpacity>}
         {busy && <ActivityIndicator color="#a78bfa" />}
         {clips.map((clip, index) => (
           <View key={index} style={styles.card}>
             <Text style={styles.text}>Clip {index + 1}: {clip.start}s – {clip.end}s (audio score: {clip.score ?? 'N/A'} dB)</Text>
-            <TouchableOpacity style={styles.button} onPress={() => Linking.openURL(
-              server.trim().replace(/\/$/, '') + '/videos/' + clip.videoId + '/export?start=' + clip.start + '&end=' + clip.end
-            )}><Text style={styles.buttonText}>Open MP4 export</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.button} onPress={() => Linking.openURL(clipUrl(clip))}>
+              <Text style={styles.buttonText}>Preview / download MP4</Text>
+            </TouchableOpacity>
+            {transcribed && <TouchableOpacity style={styles.button} onPress={() => Linking.openURL(clipUrl(clip, true))}>
+              <Text style={styles.buttonText}>Export with burned subtitles</Text>
+            </TouchableOpacity>}
+            {transcribed && <TouchableOpacity style={styles.button} onPress={() => Linking.openURL(
+              server.trim().replace(/\\/$/, '') + '/videos/' + clip.videoId + '/captions?start=' + clip.start + '&end=' + clip.end
+            )}><Text style={styles.buttonText}>Open SRT captions</Text></TouchableOpacity>}
           </View>
         ))}
-        <Text style={styles.muted}>Prototype: suggestions use audio activity, not semantic AI ranking. Only upload videos you are authorized to edit.</Text>
+        <Text style={styles.muted}>Prototype: audio and optional speech-density ranking, not semantic AI. Download options depend on your browser. Only upload videos you are authorized to edit.</Text>
       </ScrollView>
     </SafeAreaView>
   );
