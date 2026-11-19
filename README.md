@@ -1,23 +1,32 @@
-# Clipzo AI — MVP
+# Clipzo AI — Prototype
 
-Expo React Native mobile app and FastAPI/FFmpeg video clipping backend.
+Expo React Native app + FastAPI/FFmpeg backend. Only process videos you own or are authorized to edit.
 
-## Current functionality
-- Select local video on iOS/Android and upload to the backend (250 MB limit)
-- Suggest up to five evenly spaced 30-second segments (**not AI-ranked yet**)
-- Export 9:16 720x1280 MP4 clips up to 60 seconds
+## Features
+1. Upload local video (up to 250 MB).
+2. Rank candidate 5–60-second clips by audio volume.
+3. **Optional Whisper transcription** (faster-whisper tiny CPU model); speech-density sorting when a transcript exists.
+4. Export captioned MP4s with burned-in SRT subtitles, or fetch SRT separately.
+5. Preview/export via the phone's browser; exact save behavior varies by OS/browser.
+6. Docker Compose development backend.
 
-## Backend
-Requires Python 3.10+, ffmpeg and ffprobe installed on the server.
+**Not yet included:** semantic AI highlight ranking, automatic YouTube downloads, integrated native video player, cloud-hosted backend, authentication, queueing, production-ready storage management, or verified APK/IPA. Transcripts are held in process memory and lost on restart. Initial Whisper model download requires network access and may take time.
+
+## Run backend locally
+
+Requires Python 3.11 and FFmpeg/ffprobe:
 
 ```bash
 cd backend
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8000
+pip install -r requirements-ai.txt
+uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-## Mobile app
-Requires Node.js 20+ and Expo tooling.
+For basic clipping without transcription, install `requirements.txt` instead.
+
+Or run `docker compose up --build` from repo root; the included Compose config binds **only localhost** and installs optional AI dependencies. For mobile use, deploy behind an authenticated HTTPS gateway with upload limits, rate limiting, and private storage. Do **not** expose this unauthenticated API directly to the internet.
+
+## Mobile
 
 ```bash
 cd app
@@ -25,7 +34,17 @@ npm install
 npx expo start
 ```
 
-Set the Backend URL in the app to an address reachable from your phone. For remote access deploy the backend with HTTPS. The example LAN IP is only a placeholder.
+Set the Backend URL to a reachable server; the default IP is only an example. Upload a video, generate suggestions, optionally transcribe, then preview/export. Subtitle rendering requires FFmpeg compiled with the subtitles/libass filter.
 
-## Next steps
-Add AI transcription/highlight ranking, subtitles, asynchronous processing, authentication, storage lifecycle and cloud deployment. The current API stores files on local disk and is **not safe to expose publicly** without access controls. Upload only videos you own or have permission to edit. No APK/IPA has been built yet.
+## Validation
+
+```bash
+cd backend
+python -m unittest test_highlights.py test_captions.py
+```
+
+GitHub Actions validates Python and Expo configuration. Android APK builds use the separate manual GitHub Actions / Expo EAS workflow and require a valid EXPO_TOKEN and initialized signing credentials. A green GitHub submission does **not** mean the EAS APK build is finished.
+
+## Security and operational limitations
+
+This is an MVP, not a production service. There is no user authentication, file cleanup, malware scanning, content moderation, or job queue. Local video files and generated clips persist in `backend/media`. Keep the service private until these safeguards are implemented. Avoid uploading copyrighted or private content without authorization.
