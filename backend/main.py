@@ -8,6 +8,7 @@ import subprocess
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from highlights import rank_windows, audio_activity
 
 app = FastAPI(title="Clipzo AI MVP")
 MEDIA = Path(__file__).resolve().parent / "media"
@@ -65,12 +66,10 @@ def suggestions(video_id: str, clip_seconds: int = 30):
     path = video_path(video_id)
     length = duration(path)
     clip_seconds = max(5, min(60, clip_seconds))
-    count = min(5, max(1, int(length // clip_seconds)))
-    starts = [round(i * max(0, length - clip_seconds) / max(1, count - 1), 2) for i in range(count)]
-    return {"method": "evenly_spaced_mvp", "ai_ranked": False, "clips": [
-        {"start": start, "end": round(min(length, start + clip_seconds), 2)}
-        for start in starts
-    ]}
+    clips = rank_windows(length, clip_seconds, lambda start, span: audio_activity(path, start, span))
+    return {"method": "audio_activity_heuristic", "ai_ranked": False,
+            "note": "Louder sections are prioritized; this is not semantic AI highlight detection.",
+            "clips": clips}
 
 @app.get("/videos/{video_id}/export")
 def export(video_id: str, start: float = 0, end: float = 30):
