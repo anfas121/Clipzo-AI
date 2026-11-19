@@ -47,13 +47,13 @@ export default function App() {
         {busy && <ActivityIndicator color="#a78bfa" />}
         {clips.map((clip, index) => (
           <View key={index} style={styles.card}>
-            <Text style={styles.text}>Clip {index + 1}: {clip.start}s – {clip.end}s</Text>
+            <Text style={styles.text}>Clip {index + 1}: {clip.start}s – {clip.end}s (audio score: {clip.score ?? 'N/A'} dB)</Text>
             <TouchableOpacity style={styles.button} onPress={() => Linking.openURL(
               server.trim().replace(/\/$/, '') + '/videos/' + clip.videoId + '/export?start=' + clip.start + '&end=' + clip.end
             )}><Text style={styles.buttonText}>Open MP4 export</Text></TouchableOpacity>
           </View>
         ))}
-        <Text style={styles.muted}>Prototype: suggestions are evenly spaced, not AI-ranked. Only upload videos you are authorized to edit.</Text>
+        <Text style={styles.muted}>Prototype: suggestions use audio activity, not semantic AI ranking. Only upload videos you are authorized to edit.</Text>
       </ScrollView>
     </SafeAreaView>
   );
