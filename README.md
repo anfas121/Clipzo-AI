@@ -48,3 +48,6 @@ GitHub Actions validates Python and Expo configuration. Android APK builds use t
 ## Security and operational limitations
 
 This is an MVP, not a production service. There is no user authentication, file cleanup, malware scanning, content moderation, or job queue. Local video files and generated clips persist in `backend/media`. Keep the service private until these safeguards are implemented. Avoid uploading copyrighted or private content without authorization.
+
+## Local storage cleanup
+Run `cd backend && python cleanup.py --hours 24` from cron/systemd at your preferred interval to remove expired MP4 and SRT files. This is a manual scheduling hook, **not an automatically configured cleanup job**. Do not run while active jobs are processing those files; production deployments need a proper job-aware retention system.
