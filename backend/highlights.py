@@ -40,7 +40,7 @@ def audio_activity(path, start, span):
         capture_output=True, text=True, timeout=90, check=False)
     if proc.returncode != 0:
         return -100.0
-    match = re.search(r"mean_volume:\\s*(-?(?:\\d+(?:\\.\\d+)?|inf))\\s*dB", proc.stderr)
+    match = re.search(r"mean_volume:\s*(-?(?:\d+(?:\.\d+)?|inf))\s*dB", proc.stderr)
     if not match:
         return -100.0
     return float(match.group(1))
