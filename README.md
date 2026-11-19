@@ -51,3 +51,14 @@ This is an MVP, not a production service. There is no user authentication, file 
 
 ## Local storage cleanup
 Run `cd backend && python cleanup.py --hours 24` from cron/systemd at your preferred interval to remove expired MP4 and SRT files. This is a manual scheduling hook, **not an automatically configured cleanup job**. Do not run while active jobs are processing those files; production deployments need a proper job-aware retention system.
+
+## iOS and Android cloud builds
+
+The `Build iOS and Android` GitHub Actions workflow submits Android **APK** and unsigned **iOS simulator** builds to Expo EAS after changes to the mobile app reach `main`. You can also manually select Android, iOS simulator, both, or iOS device under Actions > Build iOS and Android > Run workflow.
+
+- Android preview: installable APK, provided EAS credentials are initialized.
+- iOS simulator: unsigned simulator-only artifact; **cannot be installed on a physical iPhone**.
+- iOS device: requires Apple Developer Program access and Apple signing credentials configured in EAS. This is manual-only to avoid unexpected signing prompts/costs.
+- GitHub Actions `success` only means EAS accepted the submission. Confirm the final build status and download link in the Expo EAS dashboard.
+- `EXPO_TOKEN` must exist as a GitHub Actions secret. Never commit it to the repository.
+- The mobile app still needs a reachable, secured HTTPS backend before clipping works away from local development.
