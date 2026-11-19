@@ -1,0 +1,76 @@
+name: Build iOS and Android
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: "Build target"
+        required: true
+        type: choice
+        options:
+          - android
+          - ios-simulator
+          - ios-device
+          - both-simulators
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '.github/workflows/mobile-builds.yml'
+jobs:
+  android:
+    if: github.event_name == 'push' || inputs.platform == 'android' || inputs.platform == 'both-simulators'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - run: npm install --global eas-cli
+      - name: Submit Android APK build to EAS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          test -n "$EXPO_TOKEN" || { echo "Missing EXPO_TOKEN"; exit 1; }
+          eas build --platform android --profile preview --non-interactive --no-wait
+  ios-simulator:
+    if: github.event_name == 'push' || inputs.platform == 'ios-simulator' || inputs.platform == 'both-simulators'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - run: npm install --global eas-cli
+      - name: Submit unsigned iOS simulator build to EAS
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          test -n "$EXPO_TOKEN" || { echo "Missing EXPO_TOKEN"; exit 1; }
+          eas build --platform ios --profile ios-simulator --non-interactive --no-wait
+  ios-device:
+    if: github.event_name == 'workflow_dispatch' && inputs.platform == 'ios-device'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+      - run: npm install --global eas-cli
+      - name: Submit signed iOS device build (requires Apple credentials)
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          test -n "$EXPO_TOKEN" || { echo "Missing EXPO_TOKEN"; exit 1; }
+          eas build --platform ios --profile ios-device --non-interactive --no-wait
